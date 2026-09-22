@@ -4,5 +4,19 @@
 <p class="{% if row.verdict == '合格' %}ok{% else %}bad{% endif %}">{{ row.verdict }} · {{ row.note }}</p>
 <p>实测光强 {{ row.measured_cd }}，要求 {{ row.required_cd }}，方位偏差 {{ row.bearing_error_deg }} 度</p>
 <p>登记人 {{ row.created_by }}</p>
+{% if can_write %}
+<form method="post" action="{% url 'verdict_edit' row.pk %}" class="card">
+  {% csrf_token %}
+  <label for="verdict">只改判词文字（不动光强与方位）</label>
+  <select id="verdict" name="verdict">
+    <option value="合格" {% if row.verdict == '合格' %}selected{% endif %}>合格</option>
+    <option value="不合格" {% if row.verdict == '不合格' %}selected{% endif %}>不合格</option>
+  </select>
+  {% if error %}<p class="err">{{ error }}</p>{% endif %}
+  <button type="submit">保存判词</button>
+</form>
+{% else %}
+<p class="err">只读账号不可改字</p>
+{% endif %}
 <p><a href="{% url 'list' %}">返回列表</a></p>
 {% endblock %}

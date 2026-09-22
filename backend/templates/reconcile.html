@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}判词核对 · 航标灯光巡检台{% endblock %}
+{% block body %}
+<h1>判词核对</h1>
+<p>服务端按库里的光强与方位偏角重算判词，只列出文字与重算结果不一致的记录。</p>
+<table>
+  <thead>
+    <tr><th>灯号</th><th>当前判词</th><th>重算判词</th><th>重算附言</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for item in mismatches %}
+    <tr>
+      <td>{{ item.row.aid_code }}</td>
+      <td class="{% if item.current == '合格' %}ok{% else %}bad{% endif %}">{{ item.current }}</td>
+      <td class="{% if item.recomputed == '合格' %}ok{% else %}bad{% endif %}">{{ item.recomputed }}</td>
+      <td>{{ item.recomputed_note }}</td>
+      <td>
+        {% if can_write %}
+        <form method="post" action="{% url 'reconcile_rewrite' item.row.pk %}" style="display:inline">
+          {% csrf_token %}
+          <button type="submit">按重算回写</button>
+        </form>
+        {% else %}
+        <span class="err">只读账号不可回写</span>
+        {% endif %}
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5">没有不一致的记录</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

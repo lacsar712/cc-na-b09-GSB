@@ -43,6 +43,13 @@ def logout_view(request):
     return redirect("login")
 
 
+VERDICT_CHOICES = ("合格", "不合格")
+
+
+def _recomputed(row) -> tuple[str, str]:
+    return judge(row.measured_cd, row.required_cd, row.bearing_error_deg)
+
+
 @login_required
 def list_view(request):
     rows = Inspection.objects.all()
@@ -84,3 +91,55 @@ def create_view(request):
             )
             return redirect("detail", pk=row.pk)
     return render(request, "form.html", {"error": error})
+
+
+@login_required
+def reconcile_view(request):
+    mismatches = []
+    for row in Inspection.objects.all():
+        rec_verdict, rec_note = _recomputed(row)
+        if rec_verdict != row.verdict:
+            mismatches.append(
+                {
+                    "row": row,
+                    "current": row.verdict,
+                    "recomputed": rec_verdict,
+                    "recomputed_note": rec_note,
+                }
+            )
+    return render(
+        request,
+        "reconcile.html",
+        {"mismatches": mismatches, "can_write": _can_write(request.user)},
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def reconcile_rewrite_view(request, pk):
+    if not _can_write(request.user):
+        return HttpResponseForbidden("仅持灯巡检员可按重算结果回写判词")
+    row = get_object_or_404(Inspection, pk=pk)
+    rec_verdict, rec_note = _recomputed(row)
+    row.verdict = rec_verdict
+    row.note = rec_note
+    row.save(update_fields=["verdict", "note"])
+    return redirect("reconcile")
+
+
+@login_required
+@require_http_methods(["POST"])
+def verdict_edit_view(request, pk):
+    if not _can_write(request.user):
+        return HttpResponseForbidden("仅持灯巡检员可修改判词文字")
+    row = get_object_or_404(Inspection, pk=pk)
+    new_verdict = request.POST.get("verdict", "").strip()
+    if new_verdict not in VERDICT_CHOICES:
+        return render(
+            request,
+            "detail.html",
+            {"row": row, "error": "判词只能是 合格 或 不合格"},
+        )
+    row.verdict = new_verdict
+    row.save(update_fields=["verdict"])
+    return redirect("detail", pk=row.pk)
