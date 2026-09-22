@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}判词核对 · 航标灯光巡检台{% endblock %}
+{% block body %}
+<h1>判词核对</h1>
+<p>服务端按各灯号库里的实测光强与方位偏差重算判词，仅列出判词文字与重算结果不一致的灯号。</p>
+<table>
+  <thead>
+    <tr>
+      <th>灯号</th>
+      <th>当前判词</th>
+      <th>当前附言</th>
+      <th>重算判词</th>
+      <th>重算附言</th>
+      {% if can_write %}<th></th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+  {% for item in mismatches %}
+    <tr>
+      <td>{{ item.row.aid_code }}</td>
+      <td class="{% if item.row.verdict == '合格' %}ok{% else %}bad{% endif %}">{{ item.row.verdict }}</td>
+      <td>{{ item.row.note }}</td>
+      <td class="{% if item.expected_verdict == '合格' %}ok{% else %}bad{% endif %}">{{ item.expected_verdict }}</td>
+      <td>{{ item.expected_note }}</td>
+      {% if can_write %}
+      <td>
+        <form method="post" action="{% url 'reconcile_fix' item.row.pk %}">
+          {% csrf_token %}
+          <button type="submit">按重算回写</button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+  {% empty %}
+    <tr><td colspan="{% if can_write %}6{% else %}5{% endif %}">全部一致，没有待核对的灯号。</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if not can_write %}
+<p>当前为只读账号，仅可查看，不能改字或回写。</p>
+{% endif %}
+{% endblock %}

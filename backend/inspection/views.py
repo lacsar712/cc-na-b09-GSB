@@ -56,6 +56,41 @@ def detail_view(request, pk):
 
 
 @login_required
+def reconcile_view(request):
+    mismatches = []
+    for row in Inspection.objects.all():
+        expected_verdict, expected_note = judge(
+            row.measured_cd, row.required_cd, row.bearing_error_deg
+        )
+        if row.verdict != expected_verdict:
+            mismatches.append(
+                {
+                    "row": row,
+                    "expected_verdict": expected_verdict,
+                    "expected_note": expected_note,
+                }
+            )
+    return render(
+        request,
+        "reconcile.html",
+        {"mismatches": mismatches, "can_write": _can_write(request.user)},
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def reconcile_fix_view(request, pk):
+    if not _can_write(request.user):
+        return HttpResponseForbidden("仅巡检员可回写判词")
+    row = get_object_or_404(Inspection, pk=pk)
+    verdict, note = judge(row.measured_cd, row.required_cd, row.bearing_error_deg)
+    row.verdict = verdict
+    row.note = note
+    row.save(update_fields=["verdict", "note"])
+    return redirect("reconcile")
+
+
+@login_required
 @require_http_methods(["GET", "POST"])
 def create_view(request):
     if not _can_write(request.user):

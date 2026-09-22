@@ -29,6 +29,9 @@ class Command(BaseCommand):
         ]
         for code, measured, required, bearing in samples:
             verdict, note = judge(measured, required, bearing)
+            if code == "LH-01":
+                # 明亮种子：只改判词文字，光强与偏角保持合格，制造一条待核对记录
+                verdict = "不合格"
             Inspection.objects.create(
                 aid_code=code,
                 measured_cd=measured,
